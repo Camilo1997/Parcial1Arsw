@@ -1,8 +1,11 @@
 package edu.eci.arsw.primefinder;
 
 import edu.eci.arsw.mouseutils.MouseMovementMonitor;
+import edu.eci.arsw.primefinder.PrimeFinder;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.http.HttpResponse;
@@ -14,41 +17,59 @@ import org.apache.http.impl.client.HttpClientBuilder;
 
 public class PrimesFinderTool {
 
-	public static void main(String[] args) {
-		            
-            int maxPrim=1000;
-            
-            PrimesResultSet prs=new PrimesResultSet("john");
-            
-            PrimeFinder.findPrimes(new BigInteger("1"), new BigInteger("10000"), prs);
-            
-            System.out.println("Prime numbers found:");
-            
-            System.out.println(prs.getPrimes());
-            
-            
-            /*while(task_not_finished){
-                try {
-                    //check every 10ms if the idle status (10 seconds without mouse
-                    //activity) was reached. 
-                    Thread.sleep(10);
-                    if (MouseMovementMonitor.getInstance().getTimeSinceLastMouseMovement()>10000){
-                        System.out.println("Idle CPU ");
+    public static void main(String[] args) throws InterruptedException {
+
+        ArrayList<PrimeFinder> threadArray = new ArrayList<>();
+        boolean valueFinish = false;
+        int maxPrim = 10000;
+        int numThreads = 4;
+        PrimesResultSet prs = new PrimesResultSet("john");
+
+        int range = maxPrim / numThreads;
+        int minRange, maxRange;
+
+        for (int x = 0; x < maxPrim; x += range){
+            minRange = x;
+            maxRange = x + range;
+            BigInteger a = new BigInteger(String.valueOf(minRange));
+            BigInteger b = new BigInteger(String.valueOf(maxRange));
+            PrimeFinder pFinder = new PrimeFinder(a, b, prs);
+            threadArray.add(pFinder);
+        }
+
+        for (PrimeFinder pfThread : threadArray) {
+            pfThread.start();
+        }
+        
+        while (!valueFinish) {
+            try {
+                //checpfThread every 10ms if the idle status (10 seconds without mouse
+                //activity) was reached. 
+                Thread.sleep(10);
+                if (MouseMovementMonitor.getInstance().getTimeSinceLastMouseMovement() > 10000) {
+                    int countThreads = 0;
+                    for (PrimeFinder pfThread : threadArray) {
+                        if (pfThread.isFinalizar()) {
+                            countThreads++;
+                        }
+                        pfThread.resumeThread();
                     }
-                    else{
-                        System.out.println("User working again!");
+                    if (countThreads == threadArray.size()) {
+                        valueFinish = true;
                     }
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(PrimesFinderTool.class.getName()).log(Level.SEVERE, null, ex);
+                } else {
+                    for (PrimeFinder pfThread : threadArray) {
+                        pfThread.pauseThread();
+                    }
                 }
-            }*/
-                        
-            
-            
-            
-            
-	}
-	
+            } catch (Exception ex) {
+                Logger.getLogger(PrimesFinderTool.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        System.out.println("Prime numbers found:");
+
+        System.out.println(prs.getPrimes());
+
+    }
+
 }
-
-
